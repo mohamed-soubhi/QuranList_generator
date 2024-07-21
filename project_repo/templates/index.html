@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Quran Audio Player</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"> </head>
+  </head>
+  
+<body>
+  <div id="rectangle">
+    <h2>Quran Audio List Generator</h2> 
+
+    <div class="line">
+      <button id="generateRadioListBtn">Generate Live Radio List</button>
+    </div>
+
+    <div class="line">
+      <label for="surahCollections">Surah Collections (numbers separated by : OR , ):</label>
+      <input type="text" id="surahCollections">
+      <button onclick="generateAudioList()">Generate</button>
+    </div>
+
+    <div class="line">
+      <span>Start Surah:</span>
+      <input type="number" id="startSurah" min="1" max="114">
+      <span>Start Ayah:</span>
+      <input type="number" id="startAyah">
+    </div>
+
+    <div class="line">
+      <span>End Surah:</span>
+      <input type="number" id="endSurah" min="1" max="114">
+      <span>End Ayah:</span>
+      <input type="number" id="endAyah">
+      <button onclick="validateAndPlay()">Play</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("generateRadioListBtn").addEventListener("click", function() {
+      fetch('/generate_radio_list', { 
+          method: 'POST'
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok.');
+          }
+          return response.blob(); // Get the file data as a Blob
+      })
+      .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = `radio_list.m3u`; 
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+      })
+      .catch(error => {
+          console.error('There has been a problem with your fetch operation:', error);
+          alert("Error generating radio list. Please try again.");
+      });
+  });
+  
+
+    function validateAndPlay() {
+      const startSurah = parseInt(document.getElementById("startSurah").value);
+      const endSurah = parseInt(document.getElementById("endSurah").value);
+      
+      if (startSurah < 1 || startSurah > 114 || endSurah < 1 || endSurah > 114) {
+        alert("Please enter valid surah numbers between 1 and 114.");
+        return;
+      }
+      
+      // Get the start Ayah and end Ayah values
+      // ...
+
+      // Fetch/load audio and start playback
+      // ...
+    }
+  </script>
+</body>
+</html>

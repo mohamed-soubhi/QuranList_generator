@@ -1,0 +1,41 @@
+/* Rectangle Container */
+#rectangle {
+    border: 2px solid #ccc;
+    padding: 20px;
+    width: 90%; /* Make the width responsive */
+    max-width: 600px; /* Set a maximum width if needed */
+  }
+  
+  /* Header */
+  #rectangle h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  /* Lines */
+  .line {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    width: 100%; /* Make lines take full width */
+  }
+  
+  .line > * {
+    margin-right: 10px;
+  }
+  
+  /* Inputs */
+  input[type="text"], input[type="number"] {
+    width: 80px;
+  }
+  
+  /* Center Generate Live Radio List button within its line */
+/* Center Generate Live Radio List button within its line */
+.line:first-child button {
+    margin: 0 auto; /* Center horizontally */
+  }
+  
+
+
