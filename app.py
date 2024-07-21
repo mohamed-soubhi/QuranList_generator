@@ -2,7 +2,6 @@ import io
 import csv
 from flask import Flask, render_template, send_file, request, jsonify    # Import send_file
 import requests
-from flask_frozen import Freezer
 
 
 
@@ -95,6 +94,3 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
-
-freezer = Freezer(app)
-freezer.freeze()
