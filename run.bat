@@ -1,1 +1,0 @@
-py .\Quran_list_VLC.py
