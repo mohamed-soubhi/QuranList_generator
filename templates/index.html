@@ -16,7 +16,7 @@
     <div class="line">
       <label for="surahCollections">Surah Collections (numbers separated by : OR , ):</label>
       <input type="text" id="surahCollections">
-      <button id="Generate">Generate</button>
+      <button id="Generate_Surah">Generate</button>
     </div>
 
     <div class="line">
@@ -31,7 +31,7 @@
       <input type="number" id="endSurah" min="1" max="114">
       <span>End Ayah:</span>
       <input type="number" id="endAyah">
-      <button onclick="validateAndPlay()">Play</button>
+      <button id="Generate_Ayat" onclick="validateAndPlay()">Generate</button>
     </div>
   </div>
 
@@ -62,15 +62,57 @@
       });
   });
 
-    document.getElementById("Generate").addEventListener("click", function() {
+    document.getElementById("Generate_Surah").addEventListener("click", function() {
             const surahCollections = document.getElementById("surahCollections").value;
 
-            fetch('/generate_audio_list', { 
+            fetch('/generate_quran_list', { 
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ surahCollections: surahCollections })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                // Generate the file name based on the surahCollections input
+                const formattedSurahCollections = surahCollections.replace(/:/g, 'to_S').replace(/,/g, 'and_S');
+                const fileName = `quranList_S${formattedSurahCollections}.m3u`;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error('There has been a problem with your fetch operation:', error);
+                alert("Error generating radio list. Please try again.");
+            });
+        });
+  
+        document.getElementById("Generate_Ayat").addEventListener("click", function() {
+          const startSurah = parseInt(document.getElementById("startSurah").value);
+          const endSurah = parseInt(document.getElementById("endSurah").value);
+          const startAyah = parseInt(document.getElementById("startAyah").value);
+          const endAyah = parseInt(document.getElementById("endAyah").value);
+            fetch('/generate_ayat_list', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                  startSurah: startSurah,
+                  endSurah: endSurah,
+                  startAyah: startAyah,
+                  endAyah: endAyah
+                 })
             })
             .then(response => {
                 if (!response.ok) {
@@ -96,23 +138,25 @@
                 alert("Error generating radio list. Please try again.");
             });
         });
-  
-
     function validateAndPlay() {
       const startSurah = parseInt(document.getElementById("startSurah").value);
       const endSurah = parseInt(document.getElementById("endSurah").value);
-      
-      if (startSurah < 1 || startSurah > 114 || endSurah < 1 || endSurah > 114) {
-        alert("Please enter valid surah numbers between 1 and 114.");
-        return;
-      }
-      
-      // Get the start Ayah and end Ayah values
-      // ...
+      const startAyah = parseInt(document.getElementById("startAyah").value);
+      const endAyah = parseInt(document.getElementById("endAyah").value);
 
-      // Fetch/load audio and start playback
-      // ...
-    }
+      if (startSurah < 1 || startSurah > 114 || endSurah < 1 || endSurah > 114) {
+          alert("Please enter valid surah numbers between 1 and 114.");
+          return;
+      }
+
+      if (isNaN(startAyah) || isNaN(endAyah)) {
+          alert("Please enter valid ayah numbers.");
+          return;
+      }
+
+      // Your logic to handle the playback or further processing
+      console.log(`Start Surah: ${startSurah}, End Surah: ${endSurah}, Start Ayah: ${startAyah}, End Ayah: ${endAyah}`);
+  }
   </script>
 </body>
 </html>

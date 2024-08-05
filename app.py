@@ -2,7 +2,10 @@ import io
 import csv
 from flask import Flask, render_template, send_file, request, jsonify    # Import send_file
 import requests
+import pandas as pd
 
+import warnings
+warnings.filterwarnings("ignore")
 
 
 app = Flask(__name__)
@@ -61,10 +64,91 @@ def generate_quran_list_content(surah_list_number):
                 surah_list = [int(item) for item in moshaf['surah_list'].split(',')]
                 if int(surah) in surah_list:
                     url = f"{moshaf['server']}{surah:03}.mp3\n"
-                    name = f"{surah:03} {reciter['name']} - {moshaf['name']}"
+                    name = f"{surah:03} {reciter['name']} - {moshaf['name'].replace('-',' ')}"
                     content += f"#EXTINF:-1,{name}\n{url}\n"
                     
     return content
+
+def generate_aya_list_content(url_list):
+    content = "#EXTM3U\n"
+    url = "https://mp3quran.net/api/v3/reciters"
+    data = fetch_data(url)
+    for url in url_list:
+        content += f"#EXTINF:-1,\n{url}\n"
+                    
+    return content
+
+
+#todo to be replaced by json 
+Quraa2 = [
+    ["ar.abdulbasitmurattal", 192],
+    ["ar.abdullahbasfar", 192],
+    ["ar.abdulsamad", 64],
+    ["ar.abdurrahmaansudais", 192],
+    ["ar.ahmedajamy", 128],
+    ["ar.alafasy", 128],
+    ["ar.aymanswoaid", 64],
+    ["ar.hanirifai", 192],
+    ["ar.hudhaify", 128],
+    ["ar.husary", 128],
+    ["ar.husarymujawwad", 128],
+    ["ar.ibrahimakhbar", 32],
+    ["ar.mahermuaiqly", 128],
+    ["ar.minshawi", 128],
+    ["ar.minshawimujawwad", 64],
+    ["ar.muhammadayyoub", 128],
+    ["ar.muhammadjibreel", 128],
+    ["ar.parhizgar", 48],
+    ["ar.saoodshuraym", 64],
+    ["ar.shaatree", 128],
+'''    ["en.walk", 192],
+    ["fa.hedayatfarfooladvand", 40],
+    ["fr.leclerc", 128],
+    ["ur.khan", 64],
+    ["zh.chinese", 128]'''
+]
+
+#todo this function should be by json or xml
+def get_mp3_url(Qare2 , Aya_index):
+    NAME = 0
+    BITRATE = 1    
+    url = "https://cdn.islamic.network/quran/audio/"+str(Qare2[BITRATE])+"/"+Qare2[NAME]+"/"+str(Aya_index)+".mp3"    
+    return url
+    
+def generate_urls_Quraa2 ( AyaStartIndex, AyaEndIndex ):
+    url_list =[]   
+    for Q in Quraa2 :
+        for i in range(AyaStartIndex,AyaEndIndex+1):
+            Aya_index = str('{:0>4d}'.format(i))
+            #print(Aya_index)
+            generated_url = get_mp3_url(Q,Aya_index)
+            url_list.append( generated_url )
+            #print(url)
+    #print(url_list)
+    return url_list
+
+df = pd.read_csv('Quran_aya_index.csv')
+
+def create_playlist_name(Surah_start='', Surah_end='', Ayah_start='', Ayah_end=''):    
+    # Generate a playlist name based on the user's input
+    playlist_name = ('quranList_' + 'S' +str(Surah_start)+ '-A' +str(Ayah_start)+ '_S' +str(Surah_end)+ '-A' +str(Ayah_end)+ '.m3u')
+    
+    return playlist_name
+
+def get_aya_index(Surah,aya):
+#todo this function should be refacturized not to use df
+    aya_index = df[(df['Surah_Number']==Surah)&
+                  (df['Ayah_Number']==aya)]    
+    #print_row(aya_index)
+    #return the index of the Aya in the gobal quran 
+    return list(aya_index.Ayah_index.astype(int))[0] 
+
+def set_start_end_ayat_index(Surah_start, Surah_end, Ayah_start, Ayah_end):
+    #print("start from :-")
+    AyaIndexStart = get_aya_index(Surah_start,Ayah_start)
+    #print("end at :-")
+    AyaIndexEnd   = get_aya_index(Surah_end,Ayah_end)
+    return (AyaIndexStart, AyaIndexEnd)
 
 # route
 @app.route('/')
@@ -98,7 +182,7 @@ def generate_radio_list():
         app.logger.error('Error generating playlist: %s', e)
         return jsonify({'error': 'An error occurred while generating the playlist.'}), 500
 
-@app.route('/generate_audio_list', methods=['POST'])
+@app.route('/generate_quran_list', methods=['POST'])
 def generate_audio_list():
     data = request.get_json()
     surah_collections = data.get('surahCollections', '')
@@ -111,11 +195,11 @@ def generate_audio_list():
     output.seek(0)
 
     # Generate the file name based on the surah_collections
-    file_name = f"quranList_S{surah_collections.replace(':', '-').replace(',', '_')}.m3u"
+    file_name = f"quranList_S{surah_collections.replace(':', 'to_S').replace(',', 'and_S')}.m3u"
     
     return send_file(output, download_name=file_name, as_attachment=True)
 
-@app.route('/play_audio', methods=['POST'])
+@app.route('/generate_ayat_list', methods=['POST'])
 def play_audio():
     data = request.get_json()
     start_surah = data.get('startSurah')
@@ -123,7 +207,19 @@ def play_audio():
     end_surah = data.get('endSurah')
     end_ayah = data.get('endAyah')
     # Logic to fetch and play the specified audio
-    return jsonify({'status': 'success'})
+
+    AyaStartIndex, AyaEndIndex = set_start_end_ayat_index(start_surah, end_surah, start_ayah, end_ayah)    
+    audio_list_content = generate_urls_Quraa2(AyaStartIndex, AyaEndIndex)
+    playlist_name = create_playlist_name(start_surah, end_surah, start_ayah, end_ayah)
+    
+    output = io.BytesIO()
+    output.write(audio_list_content.encode('utf-8'))
+    output.seek(0)
+
+    # Generate the file name based on the surah_collections
+    file_name = f"{playlist_name}"
+    
+    return send_file(output, download_name=file_name, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
