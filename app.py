@@ -37,9 +37,36 @@ def handle_generate_radio_list():
         print(f"Files created: {csv_file}, {m3u_file}")   
 
 
+def parse_surah_collections(surah_collections):
+    collections = surah_collections.split(',')
+    surah_list = []
+    for item in collections:
+        if ':' in item:
+            start, end = map(int, item.split(':'))
+            surah_list.extend(range(start, end + 1))
+        else:
+            surah_list.append(int(item))
+    return surah_list
+
+def generate_quran_list_content(surah_list_number):
+    content = "#EXTM3U\n"
+    url = "https://mp3quran.net/api/v3/reciters"
+    data = fetch_data(url)
+    for reciter in data['reciters']:
+        #print(reciter)
+        for moshaf in reciter['moshaf']:
+            #print(moshaf)
+            for surah in surah_list_number:
+                #print(moshaf['surah_list'])
+                surah_list = [int(item) for item in moshaf['surah_list'].split(',')]
+                if int(surah) in surah_list:
+                    url = f"{moshaf['server']}{surah:03}.mp3\n"
+                    name = f"{surah:03} {reciter['name']} - {moshaf['name']}"
+                    content += f"#EXTINF:-1,{name}\n{url}\n"
+                    
+    return content
 
 # route
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -74,11 +101,19 @@ def generate_radio_list():
 @app.route('/generate_audio_list', methods=['POST'])
 def generate_audio_list():
     data = request.get_json()
-    surah_collections = data.get('surahCollections')
-    # Logic to generate audio list based on surah collections
-    audio_list = []  
-    # ... your processing logic ...
-    return jsonify(audio_list)
+    surah_collections = data.get('surahCollections', '')
+    surah_list_number = parse_surah_collections(surah_collections)
+    print(surah_list_number)
+    audio_list_content = generate_quran_list_content(surah_list_number)
+    
+    output = io.BytesIO()
+    output.write(audio_list_content.encode('utf-8'))
+    output.seek(0)
+
+    # Generate the file name based on the surah_collections
+    file_name = f"quranList_S{surah_collections.replace(':', '-').replace(',', '_')}.m3u"
+    
+    return send_file(output, download_name=file_name, as_attachment=True)
 
 @app.route('/play_audio', methods=['POST'])
 def play_audio():

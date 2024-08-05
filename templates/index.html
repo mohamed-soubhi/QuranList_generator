@@ -16,7 +16,7 @@
     <div class="line">
       <label for="surahCollections">Surah Collections (numbers separated by : OR , ):</label>
       <input type="text" id="surahCollections">
-      <button onclick="generateAudioList()">Generate</button>
+      <button id="Generate">Generate</button>
     </div>
 
     <div class="line">
@@ -61,6 +61,41 @@
           alert("Error generating radio list. Please try again.");
       });
   });
+
+    document.getElementById("Generate").addEventListener("click", function() {
+            const surahCollections = document.getElementById("surahCollections").value;
+
+            fetch('/generate_audio_list', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ surahCollections: surahCollections })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                // Generate the file name based on the surahCollections input
+                const formattedSurahCollections = surahCollections.replace(/:/g, '-').replace(/,/g, '_');
+                const fileName = `quranList_S${formattedSurahCollections}.m3u`;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error('There has been a problem with your fetch operation:', error);
+                alert("Error generating radio list. Please try again.");
+            });
+        });
   
 
     function validateAndPlay() {

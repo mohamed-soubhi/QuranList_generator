@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html>
-  <head>
+<head>
     <title>Quran Audio Player</title>
-    <link rel="stylesheet" href="/static/styles.css"> </head>
-  </head>
-  
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
 <body>
   <div id="rectangle">
     <h2>Quran Audio List Generator</h2> 
@@ -14,7 +13,8 @@
     </div>
 
     <div class="line">
-      <label for="surahCollections">Surah Collections (numbers separated by : OR , ):</label>
+      <label for="surahCollections">
+        Surah Collections (single number, range: 5:20 or list: 20,40,33):</label>
       <input type="text" id="surahCollections">
       <button onclick="generateAudioList()">Generate</button>
     </div>
@@ -23,19 +23,42 @@
       <span>Start Surah:</span>
       <input type="number" id="startSurah" min="1" max="114">
       <span>Start Ayah:</span>
-      <input type="number" id="startAyah">
+      <input type="number" id="startAyah"  min="1" max="286">
     </div>
 
     <div class="line">
       <span>End Surah:</span>
       <input type="number" id="endSurah" min="1" max="114">
       <span>End Ayah:</span>
-      <input type="number" id="endAyah">
-      <button onclick="validateAndPlay()">Play</button>
+      <input type="number" id="endAyah" min="1" max="286">
+      <button onclick="validateAndGenerate()">Generate</button>
     </div>
+    
+    <div id="audioListContainer"></div> <!-- Placeholder for the audio list -->
+
   </div>
 
   <script>
+    const Surah_ayah_max = [
+        [1, 7], [2, 286], [3, 200], [4, 176], [5, 120], [6, 165], [7, 206], 
+        [8, 75], [9, 129], [10, 109], [11, 123], [12, 111], [13, 43], [14, 52], 
+        [15, 99], [16, 128], [17, 111], [18, 110], [19, 98], [20, 135], [21, 112], 
+        [22, 78], [23, 118], [24, 64], [25, 77], [26, 227], [27, 93], [28, 88], 
+        [29, 69], [30, 60], [31, 34], [32, 30], [33, 73], [34, 54], [35, 45], 
+        [36, 83], [37, 182], [38, 88], [39, 75], [40, 85], [41, 54], [42, 53], 
+        [43, 89], [44, 59], [45, 37], [46, 35], [47, 38], [48, 29], [49, 18], 
+        [50, 45], [51, 60], [52, 49], [53, 62], [54, 55], [55, 78], [56, 96], 
+        [57, 29], [58, 22], [59, 24], [60, 13], [61, 14], [62, 11], [63, 11], 
+        [64, 18], [65, 12], [66, 12], [67, 30], [68, 52], [69, 52], [70, 44], 
+        [71, 28], [72, 28], [73, 20], [74, 56], [75, 40], [76, 31], [77, 50], 
+        [78, 40], [79, 46], [80, 42], [81, 29], [82, 19], [83, 36], [84, 25], 
+        [85, 22], [86, 17], [87, 19], [88, 26], [89, 30], [90, 20], [91, 15], 
+        [92, 21], [93, 11], [94, 8], [95, 8], [96, 19], [97, 5], [98, 8], 
+        [99, 8], [100, 11], [101, 11], [102, 8], [103, 3], [104, 9], [105, 5], 
+        [106, 4], [107, 7], [108, 3], [109, 6], [110, 3], [111, 5], [112, 4], 
+        [113, 5], [114, 6]
+    ];
+
     document.getElementById("generateRadioListBtn").addEventListener("click", function() {
       fetch('/generate_radio_list', { 
           method: 'POST'
@@ -60,24 +83,86 @@
           console.error('There has been a problem with your fetch operation:', error);
           alert("Error generating radio list. Please try again.");
       });
-  });
+    });
   
+    function generateAudioList() {
+      const collectionsInput = document.getElementById("surahCollections").value.trim();
 
-    function validateAndPlay() {
-      const startSurah = parseInt(document.getElementById("startSurah").value);
+      fetch('/process_surahs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ collectionsInput: collectionsInput }) 
+      })
+      .then(response => response.json())
+      .then(data => {
+        const audioListContainer = document.getElementById("audioListContainer");
+        audioListContainer.innerHTML = ""; 
+        for (const item of data.audio_list) {
+          const listItem = document.createElement("li");
+          listItem.textContent = item;
+          audioListContainer.appendChild(listItem);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error sending data to Flask. generateAudioList');
+      });
+    }
+
+    async function validateAndGenerate() {
+      let startSurah = parseInt(document.getElementById("startSurah").value);
       const endSurah = parseInt(document.getElementById("endSurah").value);
-      
+      let startAyah = parseInt(document.getElementById("startAyah").value);
+      const endAyah = parseInt(document.getElementById("endAyah").value);
+
+      // Validate surah range
       if (startSurah < 1 || startSurah > 114 || endSurah < 1 || endSurah > 114) {
         alert("Please enter valid surah numbers between 1 and 114.");
         return;
       }
-      
-      // Get the start Ayah and end Ayah values
-      // ...
 
-      // Fetch/load audio and start playback
-      // ...
+      // Validate ayah range using Surah_ayah_max
+      const maxAyahStart = Surah_ayah_max[startSurah - 1][1];
+      const maxAyahEnd = Surah_ayah_max[endSurah - 1][1];
+
+      if (
+        startAyah < 1 ||
+        startAyah > maxAyahStart ||
+        endAyah < 1 ||
+        endAyah > maxAyahEnd
+      ) {
+        alert(
+          `Please enter valid ayah numbers for Surah ${startSurah} (1-${maxAyahStart}) and Surah ${endSurah} (1-${maxAyahEnd}).`
+        );
+        return;
+      }
+
+      // Send validSurahs to Flask
+      fetch('/process_surahs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ startSurah, endSurah, startAyah, endAyah })
+      })
+      .then(response => response.json()) 
+      .then(data => {
+        const audioListContainer = document.getElementById("audioListContainer");
+        audioListContainer.innerHTML = ""; 
+        for (const item of data.audio_list) {
+          const listItem = document.createElement("li");
+          listItem.textContent = item;
+          audioListContainer.appendChild(listItem);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error sending data to Flask. process_surahs');
+      });
     }
+
   </script>
 </body>
 </html>
